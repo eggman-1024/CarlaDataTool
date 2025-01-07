@@ -5,3 +5,7 @@ recorder/__pycache__
 raw_data/*
 dataset/*
 docs
+zy_code/*
+*.pyc
+*.pyo
+*.png
