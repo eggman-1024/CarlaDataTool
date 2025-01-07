@@ -50,9 +50,9 @@ class DataRecorder:
                 actor.set_green_time(traffic_light_setting["green_time"])
                 actor.set_yellow_time(traffic_light_setting["yellow_time"])
 
-    def setting_world_and_actors(self, json_file):
+    def setting_world_and_actors(self, json_file, index):
         with open(json_file) as handle:
-            json_settings = json.loads(handle.read())
+            json_settings = json.loads(handle.read())["maps"][index]
             self.carla_client.load_world(json_settings["map"])
             settings = self.world.get_settings()
             settings.synchronous_mode = True
@@ -83,7 +83,7 @@ class DataRecorder:
             self.base_save_dir = "{}/record_{}".format(RAW_DATA_PATH, self.record_name)
             self.actor_tree = ActorTree(self.world,
                                         "{}/config/{}".format(ROOT_PATH,
-                                                              actor_config_file),
+                                                            actor_config_file),
                                         self.base_save_dir)
             self.actor_tree.init()
     def record_vehicles_speed(self,frame_id):
@@ -99,8 +99,8 @@ class DataRecorder:
         with open("./vehicles.bin",'wb') as f:
             pickle.dump(self.speeds,f)
 
-    def start_record(self):
-        self.setting_world_and_actors(self.world_config_file)
+    def start_record(self, index):
+        self.setting_world_and_actors(self.world_config_file, index)
         os.makedirs(self.base_save_dir, exist_ok=True)
         print("yes2")
         carla_logfile = "{}/carla_raw_record.log".format(self.base_save_dir)
@@ -199,9 +199,13 @@ def main():
         help='World configuration file')
     
     args = argparser.parse_args()
-    data_recorder = DataRecorder(args)
-    print("yes")
-    data_recorder.start_record()
+    with open("{}/config/{}".format(ROOT_PATH, args.world_config_file)) as handle:
+        num_maps = len(json.loads(handle.read())["maps"])
+    for i in range(num_maps):
+        print("Start recording map {}".format(i))
+        data_recorder = DataRecorder(args)
+        # print("yes")
+        data_recorder.start_record(i)
 
 def gen_man(num):
     import random

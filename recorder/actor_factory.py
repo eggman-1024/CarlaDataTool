@@ -183,6 +183,7 @@ class ActorFactory(object):
             for spawn_point in spawn_points:
                 bp = random.choice(blueprints)
                 # filter out firetruck
+                # while(bp.id == "vehicle.carlamotors.firetruck" or bp.id == "vehicle.bh.crossbike"):
                 while(bp.id == "vehicle.carlamotors.firetruck"):
                     bp = random.choice(blueprints)
                 transform = self.spawn_points[spawn_point]
@@ -196,12 +197,38 @@ class ActorFactory(object):
 
         try:
             vehicle_num = other_vehicles_info['vehicle_num']
+            cyclist_num = other_vehicles_info['cyclist_num']
         except (KeyError, ValueError):
             vehicle_num = None
+            cyclist_num = None
         if vehicle_num:
             for i in range(vehicle_num):
                 bp = random.choice(blueprints)
+                # 判断生成的车辆是否为汽车
+                while bp.id in other_vehicles_info['cyclist_id_list']:
+                    bp = random.choice(blueprints)
+                # while(bp.id == "vehicle.carlamotors.firetruck" or bp.id == "vehicle.bh.crossbike"):
                 while(bp.id == "vehicle.carlamotors.firetruck"):
+                    bp = random.choice(blueprints)
+                all_spawn_points = self.world.get_map().get_spawn_points()
+                try:
+                    carla_actor = self.world.spawn_actor(bp, random.choice(all_spawn_points))
+                except RuntimeError:
+                    i -= 1
+                    continue
+
+                other_vehicle_object = OtherVehicle(uid=self.generate_uid(),
+                                                    name='',
+                                                    base_save_dir="/tmp",
+                                                    carla_actor=carla_actor)
+                other_vehicle_node = Node(other_vehicle_object, NodeType.OTHER_VEHICLE)
+                other_vehicle_nodes.append(other_vehicle_node)
+
+        if cyclist_num:
+            for i in range(cyclist_num):
+                bp = random.choice(blueprints)
+                # 判断生成的车辆是否为二轮车
+                while bp.id not in other_vehicles_info['cyclist_id_list']:
                     bp = random.choice(blueprints)
                 all_spawn_points = self.world.get_map().get_spawn_points()
                 try:

@@ -34,34 +34,41 @@ def get_rotation_matrix(yaw, roll, pitch):
     R = R_z @ R_y @ R_x
     return R
 
-def generate_image_sets(path_to_kitti_object: str, type: str, val_ratio: float = 0.25):
-    calib_data_list = sorted(glob.glob(f"{path_to_kitti_object}/{type}/calib/*.txt"))
-    image_sets = []
-    for item in calib_data_list:
-        frame_id = os.path.splitext(os.path.split(item)[-1])[0]
-        image_sets.append(f"{frame_id}\n")
+def generate_image_sets(path_to_kitti_object: str, type: str, train_ratio: float = 0.55, shuffle: bool = False):
     image_sets_dir = f"{path_to_kitti_object}/ImageSets"
     os.makedirs(image_sets_dir, exist_ok=True)
     if type == 'training':
-        val_size = int(len(image_sets) * val_ratio)
-        # random shuffle
-        # np.random.shuffle(image_sets)
-        val_set = image_sets[:val_size]
-        train_set = image_sets[val_size:]
-
-        with open(f"{image_sets_dir}/train.txt", 'w') as file:
-            file.writelines(train_set)
-        with open(f"{image_sets_dir}/val.txt", 'w') as file:
-            file.writelines(val_set)
-        with open(f"{image_sets_dir}/trainval.txt", 'w') as file:
-            file.writelines(image_sets)
+        # seed
+        np.random.seed(42)
+        if os.path.exists(os.path.join(image_sets_dir, "train.txt")):
+                os.remove(os.path.join(image_sets_dir, "train.txt"))
+        if os.path.exists(os.path.join(image_sets_dir, "val.txt")):
+            os.remove(os.path.join(image_sets_dir, "val.txt"))
+        if shuffle:
+            for i in range(len(os.listdir(os.path.join(path_to_kitti_object, "training", "image_2")))):
+                # 随机分配
+                if np.random.rand() < train_ratio:
+                    with open(os.path.join(image_sets_dir, "train.txt"), 'a') as f:
+                        f.write("{:06d}\n".format(i))
+                else:
+                    with open(os.path.join(image_sets_dir, "val.txt"), 'a') as f:
+                        f.write("{:06d}\n".format(i))
+        else:
+            for i in range(len(os.listdir(os.path.join(path_to_kitti_object, "training", "image_2")))):
+                if i < int(len(os.listdir(os.path.join(path_to_kitti_object, "training", "image_2"))) * train_ratio):
+                    # 不追加写入
+                    with open(os.path.join(image_sets_dir, "train.txt"), 'a') as f:
+                        f.write("{:06d}\n".format(i))
+                else:
+                    with open(os.path.join(image_sets_dir, "val.txt"), 'a') as f:
+                        f.write("{:06d}\n".format(i))
 
     elif type == 'testing':
-        with open(f"{image_sets_dir}/test.txt", 'w') as file:
-            file.writelines(image_sets)
+        for i in range(len(os.listdir(os.path.join(path_to_kitti_object, "testing", "image_2")))):
+            with open(os.path.join(image_sets_dir, "test.txt"), 'a') as f:
+                    f.write("{:06d}\n".format(i))
 
-
-def split_dataset(raw_data_root, dataset_root, new_dataset_root, train_ratio=0.8):
+def split_dataset(raw_data_root, dataset_root, new_dataset_root, train_ratio=1):
     train_dir = os.path.join(dataset_root, 'training')
     test_dir = os.path.join(dataset_root, 'testing')
 
@@ -69,7 +76,7 @@ def split_dataset(raw_data_root, dataset_root, new_dataset_root, train_ratio=0.8
     new_test_dir = os.path.join(new_dataset_root, 'testing')
 
     # 创建目标文件夹
-    sub_dirs = ['calib', 'image_2', 'label_2', 'velodyne']
+    sub_dirs = ['calib', 'image_2', 'label_2', 'status', 'velodyne']
     for sub_dir in sub_dirs:
         os.makedirs(os.path.join(new_train_dir, sub_dir), exist_ok=True)
         os.makedirs(os.path.join(new_test_dir, sub_dir), exist_ok=True)
@@ -78,6 +85,7 @@ def split_dataset(raw_data_root, dataset_root, new_dataset_root, train_ratio=0.8
     calib_files = sorted(os.listdir(os.path.join(train_dir, 'calib')))
     image_files = sorted(os.listdir(os.path.join(train_dir, 'image_2')))
     label_files = sorted(os.listdir(os.path.join(train_dir, 'label_2')))
+    status_files = sorted(os.listdir(os.path.join(train_dir, 'status')))
     velodyne_files = sorted(os.listdir(os.path.join(train_dir, 'velodyne')))
 
     # 将velodyne_files中的点云的v_x,v_y从世界坐标系转为自车雷达坐标系
@@ -97,16 +105,24 @@ def split_dataset(raw_data_root, dataset_root, new_dataset_root, train_ratio=0.8
         R_inv_T = R_inv.T
         # 将点云数据中的vx,vy转为自车雷达坐标系
         # 读取点云数据
-        data = np.fromfile(os.path.join(train_dir, 'velodyne', velodyne_files[i]), dtype=np.float32).reshape(-1, 8)
-        # 读取点云数据中的vx,vy
-        vx = data[:, 5]
-        vy = data[:, 6]
-        # 计算自车雷达坐标系下的vx,vy
-        lidar_coor_vx = R_inv_T[0, 0] * vx + R_inv_T[0, 1] * vy
-        lidar_coor_vy = R_inv_T[1, 0] * vx + R_inv_T[1, 1] * vy
-        data[:, 5] -= lidar_coor_vx
-        data[:, 6] -= lidar_coor_vy
-        data.tofile(os.path.join(train_dir, 'velodyne', velodyne_files[i]))
+        dtype = np.dtype([('x', np.float32), ('y', np.float32), ('z', np.float32), ('cos_angle', np.float32), 
+                        ('v', np.float32), ('vx', np.float32), ('vy', np.float32), ('vz', np.float32), ('v_cps', np.float32), 
+                        ('intensity', np.float32), ('id', np.uint32), ('label', np.uint32)])
+        data = np.array(np.fromfile(os.path.join(train_dir, 'velodyne', velodyne_files[i]), dtype=dtype).tolist())
+        # print(f"data:{data[:5]}")
+        # 读取点云数据中的vx,vy,vz
+        v = np.stack([data[:,5], data[:,6], data[:,7]], axis=-1)
+        # print(f"v:{v[:5]}")
+        # 将点云数据中的vx,vy,vz转为自车雷达坐标系
+        v_ego = v @ R_inv_T
+        # print(f"v_ego:{v_ego[:5]}")
+        data[:, 5] = v_ego[:,0]
+        data[:, 6] = v_ego[:,1]
+        data[:, 7] = v_ego[:,2]
+        # 将点云数据写入新的文件
+        new_data = data.reshape(-1).astype(np.float32)
+        # print(f"processed_data:{data[:5]}")
+        new_data.tofile(os.path.join(train_dir, 'velodyne', velodyne_files[i]))
     
 
     # # 检查label_files中每一个文件中的每一行，如果为空，删除该文件索引
@@ -136,7 +152,7 @@ def split_dataset(raw_data_root, dataset_root, new_dataset_root, train_ratio=0.8
     # velodyne_files = sorted(os.listdir(os.path.join(train_dir, 'velodyne')))
 
     # 确保四个文件夹中的文件数量相同
-    assert len(calib_files) == len(image_files) == len(label_files) == len(velodyne_files)
+    assert len(calib_files) == len(image_files) == len(label_files) == len(velodyne_files) == len(status_files)
 
     # # seed
     # np.random.seed(42)
@@ -157,6 +173,7 @@ def split_dataset(raw_data_root, dataset_root, new_dataset_root, train_ratio=0.8
             shutil.copy(os.path.join(train_dir, 'calib', calib_files[indices[i]]), os.path.join(new_train_dir, 'calib', f"{new_index}.txt"))
             shutil.copy(os.path.join(train_dir, 'image_2', image_files[indices[i]]), os.path.join(new_train_dir, 'image_2', f"{new_index}.png"))
             shutil.copy(os.path.join(train_dir, 'label_2', label_files[indices[i]]), os.path.join(new_train_dir, 'label_2', f"{new_index}.txt"))
+            shutil.copy(os.path.join(train_dir, 'status', status_files[indices[i]]), os.path.join(new_train_dir, 'status', f"{new_index}.txt"))
             shutil.copy(os.path.join(train_dir, 'velodyne', velodyne_files[indices[i]]), os.path.join(new_train_dir, 'velodyne', f"{new_index}.bin"))
         else:
             # 重新编号并复制到 test
@@ -164,14 +181,18 @@ def split_dataset(raw_data_root, dataset_root, new_dataset_root, train_ratio=0.8
             shutil.copy(os.path.join(train_dir, 'calib', calib_files[indices[i]]), os.path.join(new_test_dir, 'calib', f"{new_index}.txt"))
             shutil.copy(os.path.join(train_dir, 'image_2', image_files[indices[i]]), os.path.join(new_test_dir, 'image_2', f"{new_index}.png"))
             shutil.copy(os.path.join(train_dir, 'label_2', label_files[indices[i]]), os.path.join(new_test_dir, 'label_2', f"{new_index}.txt"))
+            shutil.copy(os.path.join(train_dir, 'status', status_files[indices[i]]), os.path.join(new_test_dir, 'status', f"{new_index}.txt"))
             shutil.copy(os.path.join(train_dir, 'velodyne', velodyne_files[indices[i]]), os.path.join(new_test_dir, 'velodyne', f"{new_index}.bin"))
 
-    print("数据分配完成！")
-    types = ['training', 'testing']
+    # print("数据分配完成！")
+    # types = ['training', 'testing']
+    types = ['training']
     for type in types:
         generate_image_sets(new_dataset_root, type)
 
 if __name__ == "__main__":
-    raw_data_path = r"raw_data\record_2024_1025_0902\vehicle.tesla.model3.master"
-    new_data_path = r"dataset\record_2024_1025_0902\vehicle.tesla.model3.master"
-    split_dataset(raw_data_path, os.path.join(new_data_path, "kitti_object"), os.path.join(new_data_path, "carla4d_kitti"))
+    raw_data_path_list = glob.glob(r"F:\Software\carla_tools\raw_data\record_2025*")
+    for raw_data_path in tqdm(raw_data_path_list, desc="Splitting multi datasets", colour="green"):
+        raw_data_path = os.path.join(raw_data_path, "vehicle.tesla.model3.master")
+        new_data_path = raw_data_path.replace("raw_data", "dataset")
+        split_dataset(raw_data_path, os.path.join(new_data_path, "kitti_object"), os.path.join(new_data_path, "carla4d_kitti_zrt"))

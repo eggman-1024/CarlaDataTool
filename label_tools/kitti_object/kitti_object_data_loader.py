@@ -13,6 +13,11 @@ from utils.transform import *
 
 
 def load_lidar_data(path: str):
+    '''
+    Load lidar data from path
+    :param path: str, path to the lidar data
+    :return: pd.DataFrame with columns ['frame', 'lidar_rawdata_path', 'lidar_pose']
+    '''
     lidar_rawdata_path_list = sorted(glob.glob(f"{path}/*.npy"))
     # lidar_rawdata_path_list = sorted(glob.glob(f"{path}/*.bin"))
     lidar_rawdata_df = pd.DataFrame(columns=['frame', 'lidar_rawdata_path', 'lidar_pose'])
@@ -38,6 +43,11 @@ def load_lidar_data(path: str):
 
 
 def load_camera_data(path: str):
+    '''
+    Load camera data from path
+    :param path: str, path to the camera data
+    :return: pd.DataFrame with columns ['frame', 'camera_rawdata_path', 'camera_pose', 'camera_matrix']
+    '''
     camera_rawdata_list = sorted(glob.glob(f"{path}/*.png"))
     camera_poses = pd.read_csv(f"{path}/poses.csv")
 
@@ -95,6 +105,7 @@ def load_object_labels(path: str):
 def load_vehicle_pose(path: str) -> pd.DataFrame:
     vehicle_status_df = pd.read_csv("{}/vehicle_status.csv".format(path))
     vehicle_poses = []
+    vehicle_status = []
     for idx, row in vehicle_status_df.iterrows():
         pose = Transform(Location(row['x'],
                                   row['y'],
@@ -102,12 +113,16 @@ def load_vehicle_pose(path: str) -> pd.DataFrame:
                          Rotation(roll=row['roll'],
                                   yaw=row['yaw'],
                                   pitch=row['pitch']))
+        status = [row['vx'], row['vy'], row['vz'], row['ax'], row['ay'], row['az']]
+        vehicle_status.append(status)
         vehicle_poses.append(pose)
     vehicle_status_df["vehicle_pose"] = vehicle_poses
-    return pd.DataFrame(vehicle_status_df, columns=['frame', 'timestamp', 'vehicle_pose'])
+    vehicle_status_df["vehicle_status"] = vehicle_status
+    return pd.DataFrame(vehicle_status_df, columns=['frame', 'timestamp', 'vehicle_pose', 'vehicle_status'])
 
 
 def read_pointcloud(path: str) -> np.array:
+    print("Reading pointcloud from: {}".format(path))
     pointcloud = np.load(path)
     return pointcloud
 

@@ -3,6 +3,7 @@
 import carla
 import open3d as o3d
 from utils.geometry_types import *
+from utils.label_types import ObjectLabel
 
 
 def carla_location_to_numpy_vec(carla_location: carla.Location) -> numpy.array:
@@ -66,7 +67,6 @@ def carla_rotation_to_rotation(carla_rotation: carla.Rotation) -> Rotation:
 
     Considers the conversion from left-handed system (unreal) to right-handed
     system.
-    Considers the conversion from degrees (carla) to radians.
 
     :param carla_rotation: the carla rotation
     :type carla_rotation: carla.Rotation
@@ -156,8 +156,15 @@ def carla_bbox_to_bbox(carla_bbox: carla.BoundingBox):
     return BoundingBox(location, extent, rotation)
 
 
-def bbox_to_o3d_bbox(bbox: BoundingBox):
-    center = bbox.location.get_vector()
-    rotation = bbox.rotation.get_rotation_matrix()
+def bbox_to_o3d_bbox(label: ObjectLabel, bbox: BoundingBox):
+    transform = label.transform
+    center = transform.location.get_vector()
+    rotation = transform.rotation.get_rotation_matrix()
     extent = 2.0 * bbox.extent.get_vector()
     return o3d.geometry.OrientedBoundingBox(center, rotation, extent)
+
+# def bbox_to_o3d_bbox(bbox: BoundingBox):
+#     center = bbox.location.get_vector()
+#     rotation = bbox.rotation.get_rotation_matrix()
+#     extent = 2.0 * bbox.extent.get_vector()
+#     return o3d.geometry.OrientedBoundingBox(center, rotation, extent)
