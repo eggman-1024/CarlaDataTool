@@ -57,23 +57,23 @@ class SemanticLidar(Sensor):
         lidar_data['vy'] *= -1
         # lidar_data['norm_y'] *= -1
 
-        # 将vx, vy, vz转为自车雷达坐标系
-        # 读取此时lidar的transform
-        lidar_transform = self.carla_actor.get_transform()
-        R = lidar_transform.rotation.get_rotation_matrix()  # 构建3×3旋转矩阵
-        R_inv = np.linalg.inv(R) # 旋转矩阵的逆矩阵
-        R_inv_T = R_inv.T   # 旋转矩阵的逆矩阵的转置
-        # 将点云数据中的vx,vy,vz转为自车雷达坐标系
-        v = np.stack([lidar_data['vx'], lidar_data['vy'], lidar_data['vz']], axis=-1)
-        v_ego = v @ R_inv_T
-        lidar_data['vx'] = v_ego[:, 0]
-        lidar_data['vy'] = v_ego[:, 1]
-        lidar_data['vz'] = v_ego[:, 2]
+        # 边录制数据边转换时间超过了每一帧时间间隔，会导致无法保存点云文件，所以先录制数据，后续手动转换
+        # # 将vx, vy, vz转为自车雷达坐标系
+        # # 读取此时lidar的transform
+        # lidar_transform = self.carla_actor.get_transform()
+        # R = lidar_transform.rotation.get_rotation_matrix()  # 构建3×3旋转矩阵
+        # R_inv = np.linalg.inv(R) # 旋转矩阵的逆矩阵
+        # R_inv_T = R_inv.T   # 旋转矩阵的逆矩阵的转置
+        # # 将点云数据中的vx,vy,vz转为自车雷达坐标系
+        # v = np.stack([lidar_data['vx'], lidar_data['vy'], lidar_data['vz']], axis=-1)
+        # v_ego = v @ R_inv_T
+        # lidar_data['vx'] = v_ego[:, 0]
+        # lidar_data['vy'] = v_ego[:, 1]
+        # lidar_data['vz'] = v_ego[:, 2]
 
 
         # Save point cloud to [RAW_DATA_PATH]/.../[ID]_[SENSOR_TYPE]/[FRAME_ID].npy
-        # 保存为.bin文件
-
+        # 保存为.npy文件
         np.save("{}/{:0>10d}".format(save_dir,
                                      sensor_data.frame),
                 lidar_data)

@@ -86,6 +86,7 @@ class DataRecorder:
                                                             actor_config_file),
                                         self.base_save_dir)
             self.actor_tree.init()
+            self.actor_tree.print_tree()
     def record_vehicles_speed(self,frame_id):
         self.speeds[frame_id]={}
         for i in self.obj:
@@ -201,7 +202,7 @@ def main():
     args = argparser.parse_args()
     with open("{}/config/{}".format(ROOT_PATH, args.world_config_file)) as handle:
         num_maps = len(json.loads(handle.read())["maps"])
-    for i in range(num_maps):
+    for i in range(3, num_maps):
         print("Start recording map {}".format(i))
         data_recorder = DataRecorder(args)
         # print("yes")

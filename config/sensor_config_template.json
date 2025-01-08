@@ -18,7 +18,7 @@
             "points_per_second": 1300000,
             "upper_fov": 10.0,
             "lower_fov": -24.8,
-            "horizontal_fov": 360,
+            "horizontal_fov": 120,
             "rotation_frequency": 10
         }
     ]

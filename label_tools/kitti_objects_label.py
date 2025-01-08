@@ -79,13 +79,13 @@ class KittiObjectLabelTool:
         self.record_name = record_name
         self.vehicle_name = vehicle_name
         self.rawdata_df = rawdata_df[rawdata_df.camera_pose.notna()]
-        self.range_max = 150.0
+        self.range_max = 120.0
         self.range_min = 1.0
         self.points_min = 10
         self.output_dir = output_dir
 
     def process(self):
-        debug = True #TODO:!!
+        debug = False #TODO:!!
         if not debug:
             start = time.time()
             thread_pool = ThreadPool()
@@ -101,7 +101,7 @@ class KittiObjectLabelTool:
         else:
             start = time.time()
             for index, frame in self.rawdata_df.iterrows():
-                index = 177
+                index = 1120
                 frame = self.rawdata_df.iloc[index]
                 self.process_frame(index, frame)
             if self.output_dir == '':
@@ -130,14 +130,14 @@ class KittiObjectLabelTool:
         T_lc = np.matmul(cam_trans.get_inverse_matrix(), lidar_trans.get_matrix())
 
         pointcloud_raw = read_pointcloud(frame['lidar_rawdata_path'])
-        # TODO: 下次新录的数据不用手动转换了，因为已经在lidar.py中转换了
         # convert v to lidar coordinate system
         pointcloud_raw = convert_v_to_lidar_coordinate(pointcloud_raw, lidar_trans)
 
-        pointcloud_with_id = np.array([pointcloud_raw['x'], pointcloud_raw['y'], pointcloud_raw['z'], pointcloud_raw['id']],dtype='float64').T
+        pointcloud_with_id_label = np.array([pointcloud_raw['x'], pointcloud_raw['y'], pointcloud_raw['z'], pointcloud_raw['id'], pointcloud_raw['label']],dtype='float64').T
 
         o3d_pcd = o3d.geometry.PointCloud()
         o3d_pcd.points = o3d.utility.Vector3dVector(np.array([pointcloud_raw['x'], pointcloud_raw['y'], pointcloud_raw['z']],dtype='float64').T)
+
         # Load object labels from pickle data
         with open(frame['object_labels_path'], 'rb') as pkl_file:
             objects_labels = pickle.load(pkl_file)
@@ -146,11 +146,10 @@ class KittiObjectLabelTool:
         bbox_list_2d = []
         kitti_labels = []
         pd_data = pd.DataFrame(pointcloud_raw)
-        # object_idxs = pd_data.ObjIdx.value_counts()
         object_idxs = pd_data.id.value_counts()
         for label in objects_labels:
-            if label.carla_id not in object_idxs:
-                # print(f"carla_id: {label.carla_id} not in object_idxs")
+            # 筛选有效的物体lable
+            if label.carla_id not in object_idxs and label.label_type != "vehicle":
                 continue
             # Kitti Object - Type
             if label.label_type == 'vehicle':
@@ -168,7 +167,6 @@ class KittiObjectLabelTool:
             # 将点云数据的center转到物体中心
             if label.label_type != "pedestrian":
                 label.transform.location.z += label.bounding_box.extent.z
-            # pointcloud_with_id[:, :3] = object_label_to_target_coordinate(pointcloud_with_id[:, :3], lidar_trans)
 
             # Convert object label to open3d bbox type in lidar coordinate
             o3d_bbox = bbox_to_o3d_bbox_in_target_coordinate(label, lidar_trans)
@@ -176,42 +174,38 @@ class KittiObjectLabelTool:
             # Check lidar points in bbox
             # occlusion = cal_occlusion(o3d_pcd, o3d_bbox, label_type)
             occlusion = cal_occlusion_by_volumn(o3d_pcd, o3d_bbox, label_type)
-            # if occlusion < 0:
-            #     continue
+            if occlusion < 0:
+                continue
 
             # cal 2d bbox
             # 筛选出3d包围盒的点云
-            # # 针对点云为360度的情况，位于车辆后方的点云不参与2d bbox计算，设为[0,1,0,1]
-            if o3d_bbox.center[0] < 0:
-                bbox_2d = [0, 1, 0, 1]
+            maskpoints = o3d_bbox.get_point_indices_within_bounding_box(o3d.cpu.pybind.utility.Vector3dVector(pointcloud_with_id_label[:, :3]))
+            # 筛选地面点
+            maskpoints = [i for i in maskpoints if int(pointcloud_with_id_label[i, 3]) != 98 or int(pointcloud_with_id_label[i, 4]) == 10]
+
+            # Note: 这里用两种方法计算2d包围盒，一种是以实际3d点云计算2d包围盒，一种是以3d包围盒的顶点计算2d包围盒
+            # 以实际3d点云计算2d包围盒
+            bbox_2d_filtered, truncated_flag = cal_bbox_2d_by_point(cam_mat, T_lc, image.shape, pointcloud_with_id_label[maskpoints, :3])
+            # 如果bbox_2d_filtered没有点在图像内，则跳过
+            if len(bbox_2d_filtered) == 0:
+                continue
+            # 以3d包围盒的点云计算2d包围盒
+            bbox_2d_untruncated = cal_bbox_2d_by_vertex(o3d_bbox, cam_mat, T_lc)
+
+            # 如果bbox有点在图像外，则用筛选后的点
+            if truncated_flag:
+                bbox_2d = bbox_2d_filtered
+            # 否则，用bbox 8个顶点画框
             else:
-                maskpoints = o3d_bbox.get_point_indices_within_bounding_box(o3d.cpu.pybind.utility.Vector3dVector(pointcloud_with_id[:, :3]))
-                # 筛选id!=98的点
-                maskpoints = [i for i in maskpoints if int(pointcloud_with_id[i, 3]) != 98]
+                bbox_2d = bbox_2d_untruncated
 
-                # Note: 这里用两种方法计算2d包围盒，一种是以实际3d点云计算2d包围盒，一种是以3d包围盒的顶点计算2d包围盒
-                # 以实际3d点云计算2d包围盒
-                bbox_2d_filtered, truncated_flag = cal_bbox_2d_by_point(cam_mat, T_lc, image.shape, pointcloud_with_id[maskpoints, :3])
-                # 如果bbox_2d_filtered没有点在图像内，则跳过
-                if len(bbox_2d_filtered) == 0:
-                    continue
-                # 以3d包围盒的点云计算2d包围盒
-                bbox_2d_untruncated = cal_bbox_2d_by_vertex(o3d_bbox, cam_mat, T_lc)
-
-                # 如果bbox有点在图像外，则用筛选后的点
-                if truncated_flag:
-                    bbox_2d = bbox_2d_filtered
-                # 否则，用bbox 8个顶点画框
-                else:
-                    bbox_2d = bbox_2d_untruncated
-
-            # For Debug
-            # Draw 2d bbox
-            plt.imshow(image)
-            plt.plot([bbox_2d[0], bbox_2d[2]], [bbox_2d[1], bbox_2d[1]], 'r')
-            cv2.rectangle(image, (bbox_2d[0], bbox_2d[1]), (bbox_2d[2], bbox_2d[3]), (1, 0, 0), 2)
-            # save
-            cv2.imwrite(f"bbox_{index}.png", image)
+            # # For Debug
+            # # Draw 2d bbox
+            # plt.imshow(image)
+            # plt.plot([bbox_2d[0], bbox_2d[2]], [bbox_2d[1], bbox_2d[1]], 'r')
+            # cv2.rectangle(image, (bbox_2d[0], bbox_2d[1]), (bbox_2d[2], bbox_2d[3]), (1, 0, 0), 2)
+            # # save
+            # cv2.imwrite(f"bbox_{index}.png", image)
 
             truncated = cal_truncated(image.shape[0], image.shape[1], bbox_2d_untruncated)
 
@@ -240,32 +234,32 @@ class KittiObjectLabelTool:
         # Preview each frame label result
         # if index < 35:
         #     return
-        o3d_pcd.rotate(T_lc[0:3, 0:3], np.array([0, 0, 0]))
-        o3d_pcd.translate(T_lc[0:3, 3])
-        cam_coord = o3d.geometry.TriangleMesh.create_coordinate_frame(size=10.0)
-        preview_obj = [o3d_pcd, cam_coord]
-        if len(bbox_list_3d) <= 0:
-            return
-        for bbox3d in bbox_list_3d:
-            center = np.asarray(bbox3d.center)
-            box_coord = o3d.geometry.TriangleMesh.create_coordinate_frame(origin=center)
-            box_coord.rotate(bbox3d.R)
-            preview_obj.append(box_coord)
-            preview_obj.append(bbox3d)
-            print(f"bbox3d: {bbox3d}")
-        print(frame_id)
-        o3d.visualization.draw_geometries(preview_obj)
+        # o3d_pcd.rotate(T_lc[0:3, 0:3], np.array([0, 0, 0]))
+        # o3d_pcd.translate(T_lc[0:3, 3])
+        # cam_coord = o3d.geometry.TriangleMesh.create_coordinate_frame(size=10.0)
+        # preview_obj = [o3d_pcd, cam_coord]
+        # if len(bbox_list_3d) <= 0:
+        #     return
+        # for bbox3d in bbox_list_3d:
+        #     center = np.asarray(bbox3d.center)
+        #     box_coord = o3d.geometry.TriangleMesh.create_coordinate_frame(origin=center)
+        #     box_coord.rotate(bbox3d.R)
+        #     preview_obj.append(box_coord)
+        #     preview_obj.append(bbox3d)
+        #     print(f"bbox3d: {bbox3d}")
+        # print(frame_id)
+        # o3d.visualization.draw_geometries(preview_obj)
 
         # Output dataset in kitti format
         if self.output_dir == '':
             output_dir = f"{DATASET_PATH}/{self.record_name}/{self.vehicle_name}/kitti_object/training"
         else:
             output_dir = f"{DATASET_PATH}/{self.output_dir}/kitti_object/training"
-        # write_calib(output_dir, index, lidar_trans, cam_trans, cam_mat)
+        write_calib(output_dir, index, lidar_trans, cam_trans, cam_mat)
         write_label(output_dir, index, kitti_labels)
-        # write_image(output_dir, index, image)
-        # write_pointcloud(output_dir, index, pointcloud_raw)
-        # write_status(output_dir, index, timestamp, lidar_trans, vehicle_status)
+        write_image(output_dir, index, image)
+        write_pointcloud(output_dir, index, pointcloud_raw)
+        write_status(output_dir, index, timestamp, lidar_trans, vehicle_status)
 
 
 def main():
@@ -274,7 +268,7 @@ def main():
         '--record', '-r',
         nargs='+',
         # default=['record_2025_0106_2019', 'record_2025_0106_2025', 'record_2025_0106_2032', 'record_2025_0106_2038', 'record_2025_0106_2045', 'record_2025_0106_2051'],  # 默认值为一个列表
-        default=['record_2025_0106_2019'],  # 默认值为一个列表
+        default=['record_2025_0106_2019', 'record_2025_0106_2025'],  # 默认值为一个列表
         help='Rawdata Record ID. e.g. record_2022_0113_1337'
     )
     argparser.add_argument(

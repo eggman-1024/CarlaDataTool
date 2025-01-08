@@ -17,8 +17,8 @@ def load_pkl_file(pkl_file_path):
 
 def main():
     # 修改为你想要读取的 .pkl 文件的路径
-    pkl_file_path = r'F:\Software\carla_tools\raw_data\record_2025_0106_1406\others.world_0\0000000080.pkl'
-    pkl_file_path = r'F:\Software\carla_tools\raw_data\record_2024_1229_2143\others.world_0\0000000062.pkl'
+    pkl_file_path = r'F:\Software\carla_tools\raw_data\record_2025_0106_2038\others.world_1\0000001085.pkl'
+    # pkl_file_path = r'F:\Software\carla_tools\raw_data\record_2024_1229_2143\others.world_0\0000000062.pkl'
     # pkl_file_path = r"M:\datasetsss\carla_4d\record_2024_0928_1819\others.world_0\0000000160.pkl"
 
     # 读取并打印 .pkl 文件中的内容

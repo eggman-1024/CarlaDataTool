@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from recorder.actor import PseudoActor
 from utils.label_types import *
 from utils.transform import carla_bbox_to_bbox, carla_transform_to_transform, carla_vec3d_to_vec3d
+from utils.geometry_types import Location, Vector3d, BoundingBox
 
 
 class WorldActor(PseudoActor):
@@ -27,8 +28,15 @@ class WorldActor(PseudoActor):
         for carla_actor in carla_actors:
             if carla_actor.type_id.startswith('vehicle') \
                     or carla_actor.type_id.startswith('walker'):
+                # fix bbox width
+                if carla_actor.bounding_box.extent.y == 0:
+                    bbox = carla_bbox_to_bbox(BoundingBox(carla_actor.bounding_box.location, 
+                                                          Vector3d(carla_actor.bounding_box.extent.x, 
+                                                                   self.fix_bbox_width(carla_actor), 
+                                                                   carla_actor.bounding_box.extent.z)))
+                else:
+                    bbox = carla_bbox_to_bbox(carla_actor.bounding_box)
                 transform = carla_transform_to_transform(carla_actor.get_transform())
-                bbox = carla_bbox_to_bbox(carla_actor.bounding_box)
                 if carla_actor.type_id.startswith('walker'):
                     label_type = 'pedestrian'
                 elif carla_actor.type_id.startswith('vehicle') and carla_actor.semantic_tags == [10,4]:
@@ -52,6 +60,26 @@ class WorldActor(PseudoActor):
         if debug:
             print("WorldObjectsLabel: Frame: {} Total counts: {}".format(frame_id, len(object_labels)))
         return True
+    
+    def fix_bbox_width(self, carla_actor):
+        bounding_box = carla_actor.bounding_box
+        l, w, h = bounding_box.extent.x, bounding_box.extent.y, bounding_box.extent.z
+        if l == 0.8214218020439148:
+            fixed_w = 0.18625812232494354
+        elif l == 1.1778701543807983:
+            fixed_w = 0.38183942437171936
+        elif l == 1.1047229766845703:
+            fixed_w = 0.43351709842681885
+        elif l == 0.9023334980010986:
+            fixed_w = 0.42784383893013
+        elif l == 1.0166761875152588:
+            fixed_w = 0.4012899398803711
+        elif l == 0.9177202582359314:
+            fixed_w = 0.42784383893013
+        elif l == 0.7436444163322449:
+            fixed_w = 0.42962872982025146
+
+        return fixed_w
 
     def get_type_id(self):
         return 'others.world'

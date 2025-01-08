@@ -1,8 +1,6 @@
 import os
 import random
 
-
-
 def sample_dataset(origin_path, sample_path, train_val_flag=False):
     origin_train_file = os.path.join(origin_path, "train.txt")
     origin_val_file = os.path.join(origin_path, "val.txt")

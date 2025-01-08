@@ -12,7 +12,7 @@
                 "max_substep_delta_time": 0.01,
                 "max_substeps": 16
             },
-            "actor_settings": "actor_settings_template_without_spawn.json",
+            "actor_settings": "actor_settings_with_map\\actor_settings_template_without_spawn_Town01.json",
             "traffic_light_setting":
             {
                 "red_time": 1.0,
@@ -32,7 +32,7 @@
                 "max_substep_delta_time": 0.01,
                 "max_substeps": 16
             },
-            "actor_settings": "actor_settings_template_without_spawn.json",
+            "actor_settings": "actor_settings_with_map\\actor_settings_template_without_spawn_Town02.json",
             "traffic_light_setting":
             {
                 "red_time": 1.0,
@@ -53,7 +53,7 @@
                 "max_substep_delta_time": 0.01,
                 "max_substeps": 16
             },
-            "actor_settings": "actor_settings_template_without_spawn.json",
+            "actor_settings": "actor_settings_with_map\\actor_settings_template_without_spawn_Town03.json",
             "traffic_light_setting":
             {
                 "red_time": 1.0,
@@ -74,7 +74,7 @@
                 "max_substep_delta_time": 0.01,
                 "max_substeps": 16
             },
-            "actor_settings": "actor_settings_template_without_spawn.json",
+            "actor_settings": "actor_settings_with_map\\actor_settings_template_without_spawn_Town04.json",
             "traffic_light_setting":
             {
                 "red_time": 1.0,
@@ -95,7 +95,49 @@
                 "max_substep_delta_time": 0.01,
                 "max_substeps": 16
             },
-            "actor_settings": "actor_settings_template_without_spawn.json",
+            "actor_settings": "actor_settings_with_map\\actor_settings_template_without_spawn_Town05.json",
+            "traffic_light_setting":
+            {
+                "red_time": 1.0,
+                "yellow_time": 0.5,
+                "green_time": 4.0
+            }
+
+        },
+
+        {
+            "frame_total": 3000,
+            "frame_step": 1,
+            "map": "Town06",
+            "spectator_pose": {"x": 100, "y": -150.0, "z": 150, "roll": 0, "pitch": 60.0, "yaw": -90.0},
+            "world_settings":
+            {
+                "fixed_delta_seconds": 0.1,
+                "max_substep_delta_time": 0.01,
+                "max_substeps": 16
+            },
+            "actor_settings": "actor_settings_with_map\\actor_settings_template_without_spawn_Town06.json",
+            "traffic_light_setting":
+            {
+                "red_time": 1.0,
+                "yellow_time": 0.5,
+                "green_time": 4.0
+            }
+
+        },
+
+        {
+            "frame_total": 3000,
+            "frame_step": 1,
+            "map": "Town07",
+            "spectator_pose": {"x": 100, "y": -150.0, "z": 150, "roll": 0, "pitch": 60.0, "yaw": -90.0},
+            "world_settings":
+            {
+                "fixed_delta_seconds": 0.1,
+                "max_substep_delta_time": 0.01,
+                "max_substeps": 16
+            },
+            "actor_settings": "actor_settings_with_map\\actor_settings_template_without_spawn_Town07.json",
             "traffic_light_setting":
             {
                 "red_time": 1.0,
@@ -116,7 +158,7 @@
                 "max_substep_delta_time": 0.01,
                 "max_substeps": 16
             },
-            "actor_settings": "actor_settings_template_without_spawn.json",
+            "actor_settings": "actor_settings_with_map\\actor_settings_template_without_spawn_Town10HD.json",
             "traffic_light_setting":
             {
                 "red_time": 1.0,

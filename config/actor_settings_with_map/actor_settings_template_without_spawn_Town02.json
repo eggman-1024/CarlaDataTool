@@ -1,0 +1,21 @@
+{
+    "actors":
+    [
+        {
+            "type": "vehicle.tesla.model3",
+            "name": "vehicle.tesla.model3.master",
+            "sensors_setting": "sensor_config_template.json",
+            "spawn_point": 26
+        }
+    ],
+    "other_vehicles":
+    {
+        "vehicle_num": 40,
+        "cyclist_num": 15,
+        "cyclist_id_list": ["vehicle.harley-davidson.low_rider", "vehicle.yamaha.yzf", "vehicle.kawasaki.ninja", "vehicle.bh.crossbike", "vehicle.gazelle.omafiets", "vehicle.diamondback.century", "vehicle.vespa.zx125"]
+    },
+    "other_pedestrians":
+    {
+        "pedestrian_num": 50
+    }
+}
