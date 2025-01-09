@@ -12,14 +12,15 @@ sys.path.append(Path(__file__).parent.parent.as_posix())
 from utils.transform import *
 
 
-def load_lidar_data(path: str):
+def load_lidar_data(path: str, selected_index_list=None):
     '''
     Load lidar data from path
     :param path: str, path to the lidar data
     :return: pd.DataFrame with columns ['frame', 'lidar_rawdata_path', 'lidar_pose']
     '''
     lidar_rawdata_path_list = sorted(glob.glob(f"{path}/*.npy"))
-    # lidar_rawdata_path_list = sorted(glob.glob(f"{path}/*.bin"))
+    lidar_rawdata_path_list = lidar_rawdata_path_list if selected_index_list is None else [lidar_rawdata_path_list[i] for i in selected_index_list]
+
     lidar_rawdata_df = pd.DataFrame(columns=['frame', 'lidar_rawdata_path', 'lidar_pose'])
     lidar_poses = pd.read_csv(f"{path}/poses.csv")
     for lidar_rawdata_path in lidar_rawdata_path_list:
@@ -42,13 +43,15 @@ def load_lidar_data(path: str):
     return lidar_rawdata_df
 
 
-def load_camera_data(path: str):
+def load_camera_data(path: str, selected_index_list=None):
     '''
     Load camera data from path
     :param path: str, path to the camera data
     :return: pd.DataFrame with columns ['frame', 'camera_rawdata_path', 'camera_pose', 'camera_matrix']
     '''
     camera_rawdata_list = sorted(glob.glob(f"{path}/*.png"))
+    camera_rawdata_list = camera_rawdata_list if selected_index_list is None else [camera_rawdata_list[i] for i in selected_index_list]
+
     camera_poses = pd.read_csv(f"{path}/poses.csv")
 
     camera_info = pd.read_csv(f"{path}/camera_info.csv").loc[0]
@@ -86,8 +89,10 @@ def get_frame_from_fullpath(path: str) -> int:
     return int(os.path.splitext(os.path.split(path)[-1])[0])
 
 
-def load_object_labels(path: str):
+def load_object_labels(path: str, selected_index_list=None) -> pd.DataFrame:
     object_labels_path_list = sorted(glob.glob("{}/*.pkl".format(path)))
+    object_labels_path_list = object_labels_path_list if selected_index_list is None else [object_labels_path_list[i] for i in selected_index_list]
+
     object_labels_df = pd.DataFrame(columns=['frame', 'object_labels_path'])
     for objects_labels_rawdata_path in object_labels_path_list:
         frame = get_frame_from_fullpath(objects_labels_rawdata_path)
@@ -102,8 +107,9 @@ def load_object_labels(path: str):
     return object_labels_df
 
 
-def load_vehicle_pose(path: str) -> pd.DataFrame:
+def load_vehicle_pose(path: str, selected_index_list=None) -> pd.DataFrame:
     vehicle_status_df = pd.read_csv("{}/vehicle_status.csv".format(path))
+    vehicle_status_df = vehicle_status_df.loc[selected_index_list] if selected_index_list is not None else vehicle_status_df
     vehicle_poses = []
     vehicle_status = []
     for idx, row in vehicle_status_df.iterrows():
@@ -122,7 +128,6 @@ def load_vehicle_pose(path: str) -> pd.DataFrame:
 
 
 def read_pointcloud(path: str) -> np.array:
-    print("Reading pointcloud from: {}".format(path))
     pointcloud = np.load(path)
     return pointcloud
 

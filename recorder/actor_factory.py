@@ -182,9 +182,9 @@ class ActorFactory(object):
         if spawn_points:
             for spawn_point in spawn_points:
                 bp = random.choice(blueprints)
-                # filter out firetruck
-                # while(bp.id == "vehicle.carlamotors.firetruck" or bp.id == "vehicle.bh.crossbike"):
-                while(bp.id == "vehicle.carlamotors.firetruck"):
+                # filter out big car
+                while(bp.id == "vehicle.carlamotors.firetruck" or bp.id == "vehicle.ford.ambulance" 
+                      or bp.id == "vehicle.tesla.cybertruck" or bp.id == "vehicle.mercedes.sprinter"):
                     bp = random.choice(blueprints)
                 transform = self.spawn_points[spawn_point]
                 carla_actor = self.world.spawn_actor(bp, transform)

@@ -10,12 +10,12 @@
     ],
     "other_vehicles":
     {
-        "vehicle_num": 55,
-        "cyclist_num": 18,
+        "vehicle_num": 150,
+        "cyclist_num": 15,
         "cyclist_id_list": ["vehicle.harley-davidson.low_rider", "vehicle.yamaha.yzf", "vehicle.kawasaki.ninja", "vehicle.bh.crossbike", "vehicle.gazelle.omafiets", "vehicle.diamondback.century", "vehicle.vespa.zx125"]
     },
     "other_pedestrians":
     {
-        "pedestrian_num": 70
+        "pedestrian_num": 80
     }
 }

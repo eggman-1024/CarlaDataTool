@@ -202,7 +202,7 @@ def main():
     args = argparser.parse_args()
     with open("{}/config/{}".format(ROOT_PATH, args.world_config_file)) as handle:
         num_maps = len(json.loads(handle.read())["maps"])
-    for i in range(3, num_maps):
+    for i in range(2, 3):
         print("Start recording map {}".format(i))
         data_recorder = DataRecorder(args)
         # print("yes")

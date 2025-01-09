@@ -4,12 +4,12 @@ import numpy as np
 import shutil
 from tqdm import tqdm
 
-def select_fragments(root_dir, save_dir, num, train=True):
+def select_fragments(root_dir, save_dir, clip_length, train=True):
     """
     选择数据集中的片段数据
     :param root_dir: str, 数据集的路径
     :param save_dir: str, 保存路径
-    :param num: int, 保存的数据数量
+    :param num: int, 截取的片段帧数
     :return: None
     """
     if train:
@@ -34,9 +34,8 @@ def select_fragments(root_dir, save_dir, num, train=True):
 
 
 
-    # 初始化一个空array,存放需要copy的[start_idx, save_idx]
-    idx_array = np.zeros((0, 2), dtype=int)
-    print(f"idx_array.shape:{idx_array.shape[0]}")
+    # 初始化一个空array,存放需要copy的[start_idx, save_idx, end_idx+1]
+    idx_array = np.zeros((0, 3), dtype=int)
 
     # 获取root_dir下的所有文件
     root_files = sorted(os.listdir(calib_dir))
@@ -44,21 +43,28 @@ def select_fragments(root_dir, save_dir, num, train=True):
 
     # 循环获取用户命令行输入
     while True:
-        print("请输入需要选择的数据片段的起始和截取数量,输入q退出")
+        print("=================================================================================")
+        print(f"已添加片段数:{len(list(idx_array))}")
         print(f"当前已存储的数据片段:{list(idx_array)}")
-        print("例如:0 40")
+        print(f"当前已存储的数据片段数量:{list(idx_array)[-1][0] + list(idx_array)[-1][1] if len(list(idx_array)) > 0 else 0}")
+        print("请输入需要选择的数据片段的起始id:\n[输入q退出/输入s保存/d删除最后一个片段]")
+
         input_str = input()
         if input_str == "q":
+            return
+        if input_str == "s":
             break
+        if input_str == "d":
+            if idx_array.shape[0] == 0:
+                continue
+            idx_array = idx_array[:-1]
+            continue
+
         input_list = input_str.split()
-        if len(input_list) not in [1, 2]:
+        if len(input_list) != 1:
             print("输入的数量不合法")
             continue
 
-        if len(input_list) == 1:
-            save_num = num
-        else:
-            save_num = int(input_list[1])
 
         # 判断输入是否合法
         start_idx = int(input_list[0])
@@ -73,16 +79,22 @@ def select_fragments(root_dir, save_dir, num, train=True):
                 continue
         
         # 如果剩下的数量不够了
-        if start_idx + save_num > idx_num:
-            save_num = idx_num - start_idx + 1
+        if start_idx + clip_length > idx_num:
+            clip_length = idx_num - start_idx + 1
     
-        idx_array = np.vstack((idx_array, np.array([start_idx, save_num])))
+        idx_array = np.vstack((idx_array, np.array([start_idx, clip_length, start_idx + clip_length])))
 
     # 初始化保存的索引
-    save_index = 0
+    os.makedirs(os.path.join(save_dir, "calib"), exist_ok=True)
+    os.makedirs(os.path.join(save_dir, "image_2"), exist_ok=True)
+    os.makedirs(os.path.join(save_dir, "status"), exist_ok=True)
+    os.makedirs(os.path.join(save_dir, "velodyne"), exist_ok=True)
+
+    cache_index = len(os.listdir(os.path.join(save_dir, "calib")))
+    save_index = cache_index
     root_index_list = []
     for idx in idx_array:
-        start_idx, save_num = idx
+        start_idx, save_num, end_idx = idx
         root_index_list += list(range(start_idx, start_idx + save_num))
 
     for root_index in tqdm(root_index_list, desc="Copying data", colour="green"):
@@ -95,11 +107,6 @@ def select_fragments(root_dir, save_dir, num, train=True):
         save_image_2_file = os.path.join(save_dir, "image_2", "{:06d}.png".format(save_index))
         save_status_file = os.path.join(save_dir, "status", "{:06d}.txt".format(save_index))
         save_velodyne_file = os.path.join(save_dir, "velodyne", "{:06d}.bin".format(save_index))
-
-        os.makedirs(os.path.join(save_dir, "calib"), exist_ok=True)
-        os.makedirs(os.path.join(save_dir, "image_2"), exist_ok=True)
-        os.makedirs(os.path.join(save_dir, "status"), exist_ok=True)
-        os.makedirs(os.path.join(save_dir, "velodyne"), exist_ok=True)
 
         shutil.copyfile(calib_file, save_calib_file)
         shutil.copyfile(image_2_file, save_image_2_file)
@@ -114,33 +121,54 @@ def select_fragments(root_dir, save_dir, num, train=True):
 
         save_index += 1
 
-def split_train_val(save_dir, train_val_ratio=0.55):
+def split_train_val(save_dir, clip_length, train_val_ratio=0.55):
     ImageSets_file = os.path.join(save_dir, "ImageSets")
     os.makedirs(ImageSets_file, exist_ok=True)
 
     # 获取所有的数据数量
     calib_dir = os.path.join(save_dir, "training", "calib")
-    for file in os.listdir(calib_dir):
-        idx = file.split(".")[0]
-        if int(idx) < train_val_ratio * len(os.listdir(calib_dir)):
-            with open(os.path.join(ImageSets_file, "train.txt"), "a") as f:
-                f.write(idx + "\n")
+    # 80帧为一个片段，在划分训练集和验证集时，以片段为单位
+    clip_num = len(os.listdir(calib_dir)) // clip_length
+    train_clip_idx_list = []
+    val_clip_idx_list = []
+
+    for i in range(clip_num):
+        if i <= clip_num * train_val_ratio:
+            train_clip_idx_list.append(i)
         else:
-            with open(os.path.join(ImageSets_file, "val.txt"), "a") as f:
-                f.write(idx + "\n")
-        with open(os.path.join(ImageSets_file, "trainval.txt"), "a") as f:
-            f.write(idx + "\n")
+            val_clip_idx_list.append(i)
+
+    # 根据片段的索引，生成训练集和验证集的索引
+    train_index_list = []
+    val_index_list = []
+    for clip_idx in train_clip_idx_list:
+        train_index_list += list(range(clip_idx * clip_length, clip_idx * clip_length + clip_length))
+    for clip_idx in val_clip_idx_list:
+        val_index_list += list(range(clip_idx * clip_length, clip_idx * clip_length + clip_length))
+
+    # train.txt
+    with open(os.path.join(ImageSets_file, "train.txt"), "w") as f:
+        for idx in train_index_list:
+            f.write("{:06d}\n".format(idx))
+    # val.txt
+    with open(os.path.join(ImageSets_file, "val.txt"), "w") as f:
+        for idx in val_index_list:
+            f.write("{:06d}\n".format(idx))
+    # trainval.txt
+    with open(os.path.join(ImageSets_file, "trainval.txt"), "w") as f:
+        for idx in train_index_list + val_index_list:
+            f.write("{:06d}\n".format(idx))
 
 
 def main(args):
-    select_fragments(args.root_dir, args.save_dir, args.num, args.train)
-    split_train_val(args.save_dir)
+    select_fragments(args.root_dir, args.save_dir, args.clip_length, args.train)
+    # split_train_val(args.save_dir, args.clip_length)
 
 if __name__ == "__main__":
     argparser = argparse.ArgumentParser(description="Select fragments of dataset")
-    argparser.add_argument("--root_dir", "-r", default= r"F:\Software\carla_tools\dataset\record_2025_0106_2019\vehicle.tesla.model3.master\kitti_object", type=str, help="The root directory of dataset")
+    argparser.add_argument("--root_dir", "-r", default= r"F:\Software\carla_tools\dataset\record_2025_0108_2211\vehicle.tesla.model3.master\kitti_object", type=str, help="The root directory of dataset")
     argparser.add_argument("--save_dir", "-s", default= r"F:\Software\carla_tools\dataset\record", type=str, help="The save directory of selected fragments")
-    argparser.add_argument("--num", "-n", default= 40, type=int, help="The number of selected fragments")
+    argparser.add_argument("--clip_length", "-l", default=80, type=int, help="The length of selected fragments")
     argparser.add_argument("--train", default=True, type=bool, help="Training or Testing dataset")
 
     args = argparser.parse_args()

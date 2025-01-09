@@ -37,7 +37,7 @@ def gather_rawdata_to_dataframe(record_name: str, vehicle_name: str, lidar_path:
     rawdata_frames_df = vehicle_poses_df
     rawdata_frames_df = rawdata_frames_df.reset_index(drop=False)
 
-    object_labels_path_df = load_object_labels("{}/{}/others.world_1".format(RAW_DATA_PATH, record_name))
+    object_labels_path_df = load_object_labels("{}/{}/others.world_0".format(RAW_DATA_PATH, record_name))
     rawdata_frames_df = pd.merge(rawdata_frames_df, object_labels_path_df, how='outer', on='frame')
 
     lidar_rawdata_df = load_lidar_data(f"{RAW_DATA_PATH}/{record_name}/{vehicle_name}/{lidar_path}")
@@ -267,8 +267,10 @@ def main():
     argparser.add_argument(
         '--record', '-r',
         nargs='+',
-        # default=['record_2025_0106_2019', 'record_2025_0106_2025', 'record_2025_0106_2032', 'record_2025_0106_2038', 'record_2025_0106_2045', 'record_2025_0106_2051'],  # 默认值为一个列表
-        default=['record_2025_0106_2019', 'record_2025_0106_2025'],  # 默认值为一个列表
+        # default=['record_2025_0108_1537', 'record_2025_0108_1545', 
+        #          'record_2025_0106_2032', 'record_2025_0106_2038', 
+        #          'record_2025_0106_2045', 'record_2025_0106_2051'],  # 默认值为一个列表
+        default=['record_2025_0108_2211'],
         help='Rawdata Record ID. e.g. record_2022_0113_1337'
     )
     argparser.add_argument(
@@ -295,6 +297,7 @@ def main():
     args = argparser.parse_args()
 
     record_name_list = args.record
+    # record_name_list = os.listdir(RAW_DATA_PATH)
     for record_name in record_name_list:
         if args.vehicle == 'all':
             vehicle_name_list = [os.path.basename(x) for x in glob.glob('{}/{}/vehicle.*'.format(RAW_DATA_PATH, record_name))]
