@@ -5,12 +5,12 @@
             "type": "vehicle.tesla.model3",
             "name": "vehicle.tesla.model3.master",
             "sensors_setting": "sensor_config_template.json",
-            "spawn_point": 26
+            "spawn_point": 55
         }
     ],
     "other_vehicles":
     {
-        "vehicle_num": 100,
+        "vehicle_num": 300,
         "cyclist_num": 45,
         "cyclist_id_list": ["vehicle.harley-davidson.low_rider", "vehicle.yamaha.yzf", "vehicle.kawasaki.ninja", "vehicle.bh.crossbike", "vehicle.gazelle.omafiets", "vehicle.diamondback.century", "vehicle.vespa.zx125"]
     },

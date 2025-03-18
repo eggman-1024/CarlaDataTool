@@ -1,10 +1,11 @@
+
 import pickle
 import os
 
-filepath = r"raw_data\record_2025_0108_1530\others.world_0"
+filepath = r"raw_data\record_2025_0315_2001\others.world_0"
 filenames = os.listdir(filepath)
 
-save_path = r"raw_data\record_2025_0108_1530\world"
+save_path = r"raw_data\record_2025_0315_2001\world"
 os.makedirs(save_path, exist_ok=True)
 
 

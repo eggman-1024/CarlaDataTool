@@ -162,6 +162,8 @@ class ActorFactory(object):
                 spawn_point.pop("pitch", 0.0),
                 spawn_point.pop("yaw", 0.0))
         blueprint = self.blueprint_lib.find(vehicle_type)
+        # 配合trafficmanager使用
+        blueprint.set_attribute('role_name', "hero")
         carla_actor = self.world.spawn_actor(blueprint, transform)
         print(vehicle_name)
         vehicle_object = Vehicle(uid=self.generate_uid(),

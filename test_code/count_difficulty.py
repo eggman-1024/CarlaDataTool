@@ -2,7 +2,7 @@ import numpy as np
 import os
 from tqdm import tqdm
 
-label_path = r"F:\Software\carla_tools\dataset\record\training\label_2"
+label_path = r"F:\Software\carla_tools\dataset\record\vehicle.tesla.model3.master\kitti_object\training\label_2"
 # label_path = r"Q:\kitti\training\label_2"
 
 def count_difficulty(label_path):
@@ -68,5 +68,5 @@ def count_difficulty_by_ImageSets(label_path, ImageSets_path=r"F:\Software\carla
     print(type_dict)
 
 if __name__ == "__main__":
-    # count_difficulty(label_path)
-    count_difficulty_by_ImageSets(label_path)
+    count_difficulty(label_path)
+    # count_difficulty_by_ImageSets(label_path)

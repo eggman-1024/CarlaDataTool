@@ -2,6 +2,7 @@
 import time
 import carla
 import sys
+import random
 from pathlib import Path
 sys.path.append(Path(__file__).parent.parent.as_posix())
 from utils.transform import carla_transform_to_transform
@@ -24,9 +25,9 @@ def show_spawn_points(world: carla.World, debug_helper: carla.DebugHelper):
             carla_location = carla_actor.get_location()
             carla_rotation = carla_actor.get_transform().rotation
             bbox = carla.BoundingBox(carla_location,
-                                     carla.Vector3D(0.5,
-                                                    0.5,
-                                                    0.1))
+                                     carla.Vector3D(2,
+                                                    2,
+                                                    2))
             debug_helper.draw_string(carla.Location(carla_location.x,
                                                     carla_location.y + 1.0,
                                                     carla_location.z + 1.0),
@@ -35,6 +36,23 @@ def show_spawn_points(world: carla.World, debug_helper: carla.DebugHelper):
             debug_helper.draw_box(bbox,
                                   rotation=carla_rotation,
                                   color=carla.Color(0, 255, 0))
+            
+def show_bbox(carla_actor: carla.Actor, debug_helper: carla.DebugHelper):
+    carla_location = carla_actor.get_location()
+    carla_rotation = carla_actor.get_transform().rotation
+    # bbox = carla_actor.bounding_box
+    bbox = carla.BoundingBox(carla_location,
+                             carla.Vector3D(2,2,2))
+    debug_helper.draw_box(bbox,
+                          rotation=carla_rotation,
+                          color=carla.Color(255, 0, 0),
+                          thickness=0.1,
+                          life_time=0)
+    debug_helper.draw_string(carla.Location(carla_location.x,
+                                            carla_location.y + 1.0,
+                                            carla_location.z + 1.0),
+                             "Actor-{}".format(carla_actor.id),
+                             color=carla.Color(255, 0, 0))
 
 
 def main():
@@ -47,6 +65,21 @@ def main():
     spector = carla_world.get_spectator()
 
     show_spawn_points(carla_world, debug)
+    cyclist_bps = ["vehicle.harley-davidson.low_rider", 
+                    "vehicle.yamaha.yzf", 
+                    "vehicle.kawasaki.ninja", 
+                    "vehicle.bh.crossbike", 
+                    "vehicle.gazelle.omafiets", 
+                    "vehicle.diamondback.century", 
+                    "vehicle.vespa.zx125"]
+    spawn_points = carla_world.get_map().get_spawn_points()
+    spawn_point = random.choice(spawn_points)
+    specator = carla_world.get_spectator()
+    specator.set_transform(carla.Transform(spawn_point.location + carla.Location(z=5), carla.Rotation(pitch=-90)))
+    vehicle = carla_world.spawn_actor(carla_world.get_blueprint_library().find(cyclist_bps[0]), spawn_point)
+    show_bbox(vehicle, debug)
+    time.sleep(3)
+    vehicle.destroy()
 
     try:
         while True:

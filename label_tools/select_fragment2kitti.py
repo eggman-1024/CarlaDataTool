@@ -22,74 +22,46 @@ from label_tools.kitti_object.kitti_object_data_loader import *
 from label_tools.kitti_object.kitti_object_helper import *
 
 
-
-
-def select_fragments(root_dir, clip_length):
+def select_fragments(clip_length):
     """
     选择数据集中的片段数据
-    :param root_dir: str, 数据集的路径
     :param save_dir: str, 保存路径
     :param num: int, 截取的片段帧数
     :return: None
     """
 
-    # 初始化一个空array,存放需要copy的[start_idx, save_idx, end_idx+1]
-    idx_array = np.zeros((0, 3), dtype=int)
-
-    # 获取root_dir下的所有文件
-    root_files = sorted(os.listdir(root_dir))
-    idx_num = len(root_files)
+    # 初始化一个空list,存放需要copy的[id0, id1, ..., idn]
+    multi_start_idx_list = []
 
     # 循环获取用户命令行输入
     while True:
         print("=================================================================================")
-        print(f"已添加片段数:{len(list(idx_array))}")
-        print(f"当前已存储的数据片段:{list(idx_array)}")
-        print(f"当前已存储的数据片段数量:{list(idx_array)[-1][0] + list(idx_array)[-1][1] if len(list(idx_array)) > 0 else 0}")
+        print(f"当前已存储的id:{multi_start_idx_list}")
         print("请输入需要选择的数据片段的起始id:\n[输入q退出/输入s保存/d删除最后一个片段]")
-
+        idx_list = []
         input_str = input()
         if input_str == "q":
             return
         if input_str == "s":
             break
         if input_str == "d":
-            if idx_array.shape[0] == 0:
+            if len(multi_start_idx_list) == 0:
                 continue
-            idx_array = idx_array[:-1]
+            multi_start_idx_list = multi_start_idx_list[:-1]
             continue
 
-        input_list = input_str.split()
-        if len(input_list) != 1:
-            print("输入的数量不合法")
-            continue
-
-
-        # 判断输入是否合法
-        start_idx = int(input_list[0])
-        if start_idx < 0 or start_idx >= idx_num:
-            print("输入的起始索引不合法")
-            continue
-
-        if idx_array.shape[0] != 0:
-            last_save_idx = idx_array[-1, 0] + idx_array[-1, 1]
-            if start_idx < last_save_idx:
-                print("输入的起始索引不合法")
-                continue
-        
-        # 如果剩下的数量不够了
-        if start_idx + clip_length > idx_num:
-            clip_length = idx_num - start_idx + 1
-    
-        idx_array = np.vstack((idx_array, np.array([start_idx, clip_length, start_idx + clip_length])))
-
+        idx_list = input_str.split()
+        multi_start_idx_list.append([int(idx) for idx in idx_list])
 
     # 生成需要保存的索引
-    root_index_list = []
-    for idx in idx_array:
-        start_idx, save_num, end_idx = idx
-        root_index_list += list(range(start_idx, start_idx + save_num))
-    return root_index_list
+    multi_root_index_list = []
+    for start_idx_list in multi_start_idx_list:
+        # idx中每个元素为一个片段的起始id，要加上片段的长度
+        root_index_list = []
+        for i in range(len(start_idx_list)):
+            root_index_list += list(range(start_idx_list[i], start_idx_list[i] + clip_length))
+        multi_root_index_list.append(root_index_list)
+    return multi_root_index_list
 
 
 def split_train_val(save_dir, clip_length, train_val_ratio=0.55):
@@ -170,9 +142,6 @@ def gather_rawdata_to_dataframe(record_name: str, vehicle_name: str, lidar_path:
 class KittiObjectLabelTool:
     def __init__(self, rawdata_df: pd.DataFrame, output_dir=None, clip_length=80):
         self.rawdata_df = rawdata_df[rawdata_df.camera_pose.notna()]
-        self.range_max = 120.0
-        self.range_min = 1.0
-        self.points_min = 10
         self.output_dir = output_dir
         self.clip_length = clip_length
 
@@ -186,7 +155,6 @@ class KittiObjectLabelTool:
             thread_pool.close()
             thread_pool.join()
             print(f"====================ImageSets====================")
-            split_train_val(self.output_dir, self.clip_length)
             print("Cost: {:0<3f}s".format(time.time() - start))
         else:
             start = time.time()
@@ -195,7 +163,6 @@ class KittiObjectLabelTool:
                 # frame = self.rawdata_df.iloc[index]
                 self.process_frame(index, frame)
             print(f"====================ImageSets====================")
-            split_train_val(self.output_dir, self.clip_length)
             print("Cost: {:0<3f}s".format(time.time()-start))
 
 
@@ -218,10 +185,10 @@ class KittiObjectLabelTool:
         # convert v to lidar coordinate system
         pointcloud_raw = convert_v_to_lidar_coordinate(pointcloud_raw, lidar_trans)
 
-        pointcloud_with_id_label = np.array([pointcloud_raw['x'], pointcloud_raw['y'], pointcloud_raw['z'], pointcloud_raw['id'], pointcloud_raw['label']],dtype='float64').T
+        pointcloud_with_id_label = np.array([pointcloud_raw['x'], pointcloud_raw['y'], pointcloud_raw['z'], pointcloud_raw['id'], pointcloud_raw['label']],dtype='float32').T
 
         o3d_pcd = o3d.geometry.PointCloud()
-        o3d_pcd.points = o3d.utility.Vector3dVector(np.array([pointcloud_raw['x'], pointcloud_raw['y'], pointcloud_raw['z']],dtype='float64').T)
+        o3d_pcd.points = o3d.utility.Vector3dVector(np.array([pointcloud_raw['x'], pointcloud_raw['y'], pointcloud_raw['z']],dtype='float32').T)
 
         # Load object labels from pickle data
         with open(frame['object_labels_path'], 'rb') as pkl_file:
@@ -234,8 +201,11 @@ class KittiObjectLabelTool:
         object_idxs = pd_data.id.value_counts()
         for label in objects_labels:
             # 筛选有效的物体lable
-            if label.carla_id not in object_idxs and label.label_type != "vehicle":
+            # if label.carla_id not in object_idxs and label.label_type != "vehicle":
+            #     continue
+            if not is_valid_distance(lidar_trans.location, label.transform.location):
                 continue
+
             # Kitti Object - Type
             if label.label_type == 'vehicle':
                 label_type = 'Car'
@@ -246,19 +216,21 @@ class KittiObjectLabelTool:
             else:
                 label_type = 'DontCare'
 
-            if not is_valid_distance(lidar_trans.location, label.transform.location):
-                continue
             
             # 将点云数据的center转到物体中心
             if label.label_type != "pedestrian":
                 label.transform.location.z += label.bounding_box.extent.z
 
+            # 修复cyclist bbox的宽度和高度
+            if label.label_type == "cyclist":
+                label.bounding_box.extent.y, label.bounding_box.extent.z = fix_bbox_width_and_height(label.bounding_box)
+
             # Convert object label to open3d bbox type in lidar coordinate
             o3d_bbox = bbox_to_o3d_bbox_in_target_coordinate(label, lidar_trans)
 
             # Check lidar points in bbox
-            # occlusion = cal_occlusion(o3d_pcd, o3d_bbox, label_type)
-            occlusion = cal_occlusion_by_volumn(o3d_pcd, o3d_bbox, label_type)
+            occlusion = cal_occlusion(o3d_pcd, o3d_bbox, label_type)
+            # occlusion = cal_occlusion_by_volumn(o3d_pcd, o3d_bbox, label_type)
             if occlusion < 0:
                 continue
 
@@ -272,8 +244,10 @@ class KittiObjectLabelTool:
             # 以实际3d点云计算2d包围盒
             bbox_2d_filtered, truncated_flag = cal_bbox_2d_by_point(cam_mat, T_lc, image.shape, pointcloud_with_id_label[maskpoints, :3])
             # 如果bbox_2d_filtered没有点在图像内，则跳过
+            # 360°数据集则需要补充bbox2d，否则需要continue
             if len(bbox_2d_filtered) == 0:
-                continue
+                bbox_2d_filtered = [0, 0, 0, 0] # for carla360
+                # continue
             # 以3d包围盒的点云计算2d包围盒
             bbox_2d_untruncated = cal_bbox_2d_by_vertex(o3d_bbox, cam_mat, T_lc)
 
@@ -283,7 +257,6 @@ class KittiObjectLabelTool:
             # 否则，用bbox 8个顶点画框
             else:
                 bbox_2d = bbox_2d_untruncated
-
             # # For Debug
             # # Draw 2d bbox
             # plt.imshow(image)
@@ -299,7 +272,6 @@ class KittiObjectLabelTool:
                 truncated = 1.0
 
             o3d_bbox = bbox_to_o3d_bbox_in_target_coordinate(label, cam_trans)
-            # print(f"o3d_bbox in camera coordinate: {o3d_bbox}")
 
             rotation_y = -math.radians(label.transform.rotation.yaw - cam_trans.rotation.yaw)
             rotation_y = math.atan2(math.sin(rotation_y), math.cos(rotation_y))
@@ -349,8 +321,14 @@ def main():
     argparser = argparse.ArgumentParser(description="Select fragments of raw dataset to kitti format")
     argparser.add_argument('--root_dir', default=RAW_DATA_PATH,help='Root dir of raw dataset')
     argparser.add_argument('--output_root_dir', '-o',default='record',help='Output dir in dataset folder')
-    argparser.add_argument('--output_name', '-n',default='kitti_object',help='Output name')
-    argparser.add_argument('--record', '-r',default='record_2025_0108_2211',help='Rawdata Record ID. e.g. record_2022_0113_1337')
+    argparser.add_argument('--output_name', '-n',default='test',help='Output name')
+    argparser.add_argument('--record', '-r',
+                           nargs='+',
+                           default=['record_2025_0315_2001', 'record_2025_0315_2013', 
+                                    'record_2025_0316_1131', 'record_2025_0316_1220', 
+                                    'record_2025_0316_1156', 'record_2025_0316_1141'],  # 默认值为一个列表
+                                    # 'record_2025_0316_1311'],  # 默认值为一个列表
+                           help='Rawdata Record ID. e.g. record_2022_0113_1337')
     argparser.add_argument('--vehicle', '-v',default='all',help='Vehicle name. e.g. `vehicle.tesla.model3_1`. Default to all vehicles. ')
     argparser.add_argument('--lidar', '-l',default='velodyne_semantic',help='Lidar name. e.g. sensor.lidar.ray_cast_4')
     argparser.add_argument('--camera', '-c',default='image_2',help='Camera name. e.g. sensor.camera.rgb_2')
@@ -359,36 +337,38 @@ def main():
 
     args = argparser.parse_args()
 
-
-    record_name = args.record
-    if args.vehicle == 'all':
-        vehicle_name_list = [os.path.basename(x) for x in glob.glob('{}/{}/vehicle.*'.format(RAW_DATA_PATH, record_name))]
-    else:
-        vehicle_name_list = [args.vehicle]
-
-    for vehicle_name in vehicle_name_list:
-        print("Process {} - {}".format(record_name, vehicle_name))
-        world_dir = os.path.join(args.root_dir, record_name, "others.world_0")
-        selected_frame_list = select_fragments(world_dir, args.clip_length)
-        
-        print(f"Gather rawdata to dataframe ...")
-        if args.output_root_dir == '':
-            output_dir = f"{DATASET_PATH}/{args.record_name}/{vehicle_name}/{args.output_name}"
+    record_name_list = args.record
+    multi_selected_frame_list = select_fragments(args.clip_length)
+    for i, record_name in enumerate(record_name_list):
+        selected_frame_list = multi_selected_frame_list[i]
+        if args.vehicle == 'all':
+            vehicle_name_list = [os.path.basename(x) for x in glob.glob('{}/{}/vehicle.*'.format(RAW_DATA_PATH, record_name))]
         else:
-            output_dir = f"{DATASET_PATH}/{args.output_root_dir}/{vehicle_name}/{args.output_name}"
-        cache_index = len(os.listdir(os.path.join(output_dir, "training", "calib"))) if os.path.exists(os.path.join(output_dir, "training", "calib")) else 0
-        print(f"Output dir: {output_dir}")
-        print(f"Cache index: {cache_index}")
-        rawdata_df = gather_rawdata_to_dataframe(record_name,
-                                                vehicle_name,
-                                                args.lidar,
-                                                args.camera,
-                                                cache_index,
-                                                selected_frame_list)
-        kitti_obj_label_tool = KittiObjectLabelTool(rawdata_df, output_dir, args.clip_length)
-        print(f"Processing ...")
-        kitti_obj_label_tool.process()
+            vehicle_name_list = [args.vehicle]
+
+        for vehicle_name in vehicle_name_list:
+            print("Process {} - {}".format(record_name, vehicle_name))
+            world_dir = os.path.join(args.root_dir, record_name, "others.world_0")
+            
+            print(f"Gather rawdata to dataframe ...")
+            if args.output_root_dir == '':
+                output_dir = f"{DATASET_PATH}/{args.record_name}/{vehicle_name}/{args.output_name}"
+            else:
+                output_dir = f"{DATASET_PATH}/{args.output_root_dir}/{vehicle_name}/{args.output_name}"
+            cache_index = len(os.listdir(os.path.join(output_dir, "training", "label_2"))) if os.path.exists(os.path.join(output_dir, "training", "label_2")) else 0
+            print(f"Output dir: {output_dir}")
+            print(f"Cache index: {cache_index}")
+            rawdata_df = gather_rawdata_to_dataframe(record_name,
+                                                    vehicle_name,
+                                                    args.lidar,
+                                                    args.camera,
+                                                    cache_index,
+                                                    selected_frame_list)
+            kitti_obj_label_tool = KittiObjectLabelTool(rawdata_df, output_dir, args.clip_length)
+            print(f"Processing ...")
+            kitti_obj_label_tool.process()
+    split_train_val(output_dir, args.clip_length)
 
 if __name__ == "__main__":
-    main()    
+    main()
 

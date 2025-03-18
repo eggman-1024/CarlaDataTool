@@ -15,14 +15,14 @@ from utils.transform import bbox_to_o3d_bbox
 
 
 class Param:
-    # occlusion_params = {'Car':{'POINTS_MIN': 10, 'THRESHOLD_1': 250, 'THRESHOLD_2': 125},
-    #                     'Pedestrian':{'POINTS_MIN': 8, 'THRESHOLD_1': 150, 'THRESHOLD_2': 80},
-    #                     'Cyclist':{'POINTS_MIN': 6, 'THRESHOLD_1': 120, 'THRESHOLD_2': 60}}
-    occlusion_params = {'Car':{'IOU_MIN': 0.1, 'IOU_THRESHOLD_1': 0.7, 'IOU_THRESHOLD_2': 0.35, 'DISTANCE_THRESHOLD_1': 20, 'DISTANCE_THRESHOLD_2': 80},
-                        'Pedestrian':{'IOU_MIN': 0.1, 'IOU_THRESHOLD_1': 0.4, 'IOU_THRESHOLD_2': 0.2, 'DISTANCE_THRESHOLD_1': 20, 'DISTANCE_THRESHOLD_2': 80},
-                        'Cyclist':{'IOU_MIN': 0.1, 'IOU_THRESHOLD_1': 0.6, 'IOU_THRESHOLD_2': 0.3, 'DISTANCE_THRESHOLD_1': 20, 'DISTANCE_THRESHOLD_2': 80}}
+    occlusion_params = {'Car':{'POINTS_MIN': 10, 'THRESHOLD_1': 250, 'THRESHOLD_2': 125},
+                        'Pedestrian':{'POINTS_MIN': 8, 'THRESHOLD_1': 150, 'THRESHOLD_2': 80},
+                        'Cyclist':{'POINTS_MIN': 6, 'THRESHOLD_1': 120, 'THRESHOLD_2': 60}}
+    # occlusion_params = {'Car':{'IOU_MIN': 0.1, 'IOU_THRESHOLD_1': 0.7, 'IOU_THRESHOLD_2': 0.35, 'DISTANCE_THRESHOLD_1': 20, 'DISTANCE_THRESHOLD_2': 80},
+    #                     'Pedestrian':{'IOU_MIN': 0.1, 'IOU_THRESHOLD_1': 0.4, 'IOU_THRESHOLD_2': 0.2, 'DISTANCE_THRESHOLD_1': 20, 'DISTANCE_THRESHOLD_2': 80},
+    #                     'Cyclist':{'IOU_MIN': 0.1, 'IOU_THRESHOLD_1': 0.4, 'IOU_THRESHOLD_2': 0.3, 'DISTANCE_THRESHOLD_1': 20, 'DISTANCE_THRESHOLD_2': 80}}
     RANGE_MIN = 1.0
-    RANGE_MAX = 120.0
+    RANGE_MAX = 90.0
 
 
 def transform_lidar_point_to_cam(point, T_lc: np.array):
@@ -137,47 +137,47 @@ def cal_occlusion_by_image(bbox_2d: list, bbox_3d: o3d.geometry.OrientedBounding
     pass
 
 
-def cal_occlusion_by_volumn(pcd: o3d.geometry.PointCloud, bbox_3d: o3d.geometry.OrientedBoundingBox, type: str):
+# def cal_occlusion_by_volumn(pcd: o3d.geometry.PointCloud, bbox_3d: o3d.geometry.OrientedBoundingBox, type: str):
 
-    def distance_correction_factor(distance, min_distance, max_distance):
-        # 当距离小于min_distance时，修正因子大于1，表示补偿
-        # 当距离大于max_distance时，修正因子小于1，表示距离对遮挡程度的影响逐渐减弱
-        if distance < min_distance:
-            return 1.0 + (min_distance - distance) / min_distance
-        elif distance > max_distance:
-            return 1.0 - (distance - max_distance) / max_distance
-        else:
-            return 1.0
+#     def distance_correction_factor(distance, min_distance, max_distance):
+#         # 当距离小于min_distance时，修正因子大于1，表示补偿
+#         # 当距离大于max_distance时，修正因子小于1，表示距离对遮挡程度的影响逐渐减弱
+#         if distance < min_distance:
+#             return 1.0 + (min_distance - distance) / min_distance
+#         elif distance > max_distance:
+#             return 1.0 - (distance - max_distance) / max_distance
+#         else:
+#             return 1.0
 
-    # 以点云的最小外接矩形为准
-    p_in_bbox_indice = bbox_3d.get_point_indices_within_bounding_box(pcd.points)
-    # 如果点数小于4，说明点云不够，无法计算遮挡程度
-    if len(p_in_bbox_indice) < 4:
-        return -1
-    p_in_bbox = pcd.select_by_index(p_in_bbox_indice)
+#     # 以点云的最小外接矩形为准
+#     p_in_bbox_indice = bbox_3d.get_point_indices_within_bounding_box(pcd.points)
+#     # 如果点数小于4，说明点云不够，无法计算遮挡程度
+#     if len(p_in_bbox_indice) < 4:
+#         return -1
+#     p_in_bbox = pcd.select_by_index(p_in_bbox_indice)
     
-    # inner_bbox_3d = p_in_bbox.get_oriented_bounding_box()
-    inner_bbox_3d = p_in_bbox.get_axis_aligned_bounding_box()
-    inner_volume = inner_bbox_3d.volume()
-    # inner_volume = inner_bbox_3d.extent[0] * inner_bbox_3d.extent[1] * inner_bbox_3d.extent[2]
-    outter_volume = bbox_3d.extent[0] * bbox_3d.extent[1] * bbox_3d.extent[2]
-    # 计算重叠体积
-    iou_volume = inner_volume / outter_volume
+#     inner_bbox_3d = p_in_bbox.get_oriented_bounding_box()
+#     # inner_bbox_3d = p_in_bbox.get_axis_aligned_bounding_box()
+#     inner_volume = inner_bbox_3d.volume()
+#     # inner_volume = inner_bbox_3d.extent[0] * inner_bbox_3d.extent[1] * inner_bbox_3d.extent[2]
+#     outter_volume = bbox_3d.extent[0] * bbox_3d.extent[1] * bbox_3d.extent[2]
+#     # 计算体积比
+#     iou_volume = inner_volume / outter_volume
 
 
-    distance = bbox_3d.center[0]
-    distance_factor = distance_correction_factor(distance, Param.occlusion_params[type]['DISTANCE_THRESHOLD_1'], Param.occlusion_params[type]['DISTANCE_THRESHOLD_2'])
-    iou_volume = iou_volume * distance_factor
+#     distance = bbox_3d.center[0]
+#     distance_factor = distance_correction_factor(distance, Param.occlusion_params[type]['DISTANCE_THRESHOLD_1'], Param.occlusion_params[type]['DISTANCE_THRESHOLD_2'])
+#     iou_volume = iou_volume * distance_factor
 
-    if iou_volume < Param.occlusion_params[type]['IOU_MIN']:
-        return -1
-    if iou_volume > Param.occlusion_params[type]['IOU_THRESHOLD_1']:
-        occlusion = 0
-    elif iou_volume > Param.occlusion_params[type]['IOU_THRESHOLD_2']:
-        occlusion = 1
-    else:
-        occlusion = 2
-    return occlusion
+#     if iou_volume < Param.occlusion_params[type]['IOU_MIN']:
+#         return -1
+#     if iou_volume > Param.occlusion_params[type]['IOU_THRESHOLD_1']:
+#         occlusion = 0
+#     elif iou_volume > Param.occlusion_params[type]['IOU_THRESHOLD_2']:
+#         occlusion = 1
+#     else:
+#         occlusion = 2
+#     return occlusion
 
 
 
@@ -390,3 +390,39 @@ def generate_kitti_labels(label_type: str,
                                                                          bbox_3d.center[2],
                                                                          rotation_y)
     return label_str
+
+def fix_bbox_width_and_height(bounding_box):
+        l, w, h = bounding_box.extent.x, bounding_box.extent.y, bounding_box.extent.z
+        fixed_w = w
+        fixed_h = h
+        if l == 0.7436444163322449:
+            fixed_w = 0.42962872982025146
+            fixed_h = 0.8
+
+        elif l == 0.8214218020439148:
+            fixed_w = 0.3
+            # fixed_w = 0.18625812232494354
+            fixed_h = 0.9
+
+        elif l == 0.9023334980010986:
+            fixed_w = 0.42784383893013
+            fixed_h = 0.81
+
+        elif l == 0.9177202582359314:
+            fixed_w = 0.42784383893013
+            fixed_h = 0.9
+
+        elif l == 1.0166761875152588:
+            fixed_w = 0.4012899398803711
+            fixed_h = 0.775
+
+        elif l == 1.1047229766845703:
+            fixed_w = 0.43351709842681885
+            fixed_h = 0.75
+
+        elif l == 1.1778701543807983:
+            fixed_w = 0.38183942437171936
+            fixed_h = 0.775
+        
+
+        return fixed_w, fixed_h

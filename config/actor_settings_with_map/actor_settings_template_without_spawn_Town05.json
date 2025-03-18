@@ -10,7 +10,7 @@
     ],
     "other_vehicles":
     {
-        "vehicle_num": 100,
+        "vehicle_num": 300,
         "cyclist_num": 45,
         "cyclist_id_list": ["vehicle.harley-davidson.low_rider", "vehicle.yamaha.yzf", "vehicle.kawasaki.ninja", "vehicle.bh.crossbike", "vehicle.gazelle.omafiets", "vehicle.diamondback.century", "vehicle.vespa.zx125"]
     },

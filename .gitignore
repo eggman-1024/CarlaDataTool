@@ -9,3 +9,5 @@ zy_code/*
 *.pyc
 *.pyo
 *.png
+zy_code/*
+zy_test_code/*

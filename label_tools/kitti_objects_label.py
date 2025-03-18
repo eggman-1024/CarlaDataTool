@@ -79,9 +79,6 @@ class KittiObjectLabelTool:
         self.record_name = record_name
         self.vehicle_name = vehicle_name
         self.rawdata_df = rawdata_df[rawdata_df.camera_pose.notna()]
-        self.range_max = 120.0
-        self.range_min = 1.0
-        self.points_min = 10
         self.output_dir = output_dir
 
     def process(self):
@@ -167,6 +164,10 @@ class KittiObjectLabelTool:
             # 将点云数据的center转到物体中心
             if label.label_type != "pedestrian":
                 label.transform.location.z += label.bounding_box.extent.z
+
+            # 修复cyclist bbox的宽度和高度
+            if label.label_type == "cyclist":
+                label.bounding_box.extent.y, label.bounding_box.extent.z = fix_bbox_width_and_height(label.bounding_box)
 
             # Convert object label to open3d bbox type in lidar coordinate
             o3d_bbox = bbox_to_o3d_bbox_in_target_coordinate(label, lidar_trans)
@@ -267,10 +268,10 @@ def main():
     argparser.add_argument(
         '--record', '-r',
         nargs='+',
-        # default=['record_2025_0108_1537', 'record_2025_0108_1545', 
-        #          'record_2025_0106_2032', 'record_2025_0106_2038', 
-        #          'record_2025_0106_2045', 'record_2025_0106_2051'],  # 默认值为一个列表
-        default=['record_2025_0108_2211'],
+        default=['record_2025_0108_1537', 'record_2025_0108_1545', 
+                 'record_2025_0108_1611', 'record_2025_0108_1621', 
+                 'record_2025_0108_1638', 'record_2025_0108_1656', 'record_2025_0108_1703'],  # 默认值为一个列表
+        # default=['record_2025_0108_2211'],
         help='Rawdata Record ID. e.g. record_2022_0113_1337'
     )
     argparser.add_argument(

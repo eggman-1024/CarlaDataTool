@@ -25,7 +25,7 @@ class DataRecorder:
         self.host = args.host
         self.port = args.port
         self.carla_client = carla.Client(self.host, self.port)
-        self.carla_client.set_timeout(10.0)
+        self.carla_client.set_timeout(100.0)
         self.world = self._get_world()
         self.tm = self.carla_client.get_trafficmanager()
         self.debug_helper = self.world.debug
@@ -72,6 +72,9 @@ class DataRecorder:
             settings.max_substeps = world_settings["max_substeps"]
             self.world.apply_settings(settings)
             self.tm.set_synchronous_mode(True)
+            # for saving compute resource (see carla doc for more information)
+            self.tm.set_hybrid_physics_mode(True)
+            self.tm.set_hybrid_physics_radius(120)
 
             self.frame_total = json_settings["frame_total"]
             self.frame_step = json_settings["frame_step"]
@@ -202,7 +205,7 @@ def main():
     args = argparser.parse_args()
     with open("{}/config/{}".format(ROOT_PATH, args.world_config_file)) as handle:
         num_maps = len(json.loads(handle.read())["maps"])
-    for i in range(2, 3):
+    for i in [7]:
         print("Start recording map {}".format(i))
         data_recorder = DataRecorder(args)
         # print("yes")
