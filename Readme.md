@@ -77,6 +77,7 @@
 └─utils/                                      # 工具函数
 ```
 ### Details
+------
 - **config/**
   - **actor_settings_with_map/**: 包含了每个地图的actor, other_vehicles, other_pedestrians设置
   - **kitti_object/**: 暂时没用到
