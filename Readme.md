@@ -7,30 +7,31 @@
 
 <div align="center">
 
-[![Status](https://img.shields.io/badge/status-active-success.svg)]()
+<!-- [![Status](https://img.shields.io/badge/status-active-success.svg)]()
 [![GitHub Issues](https://img.shields.io/github/issues/kylelobo/The-Documentation-Compendium.svg)](https://github.com/kylelobo/The-Documentation-Compendium/issues)
 [![GitHub Pull Requests](https://img.shields.io/github/issues-pr/kylelobo/The-Documentation-Compendium.svg)](https://github.com/kylelobo/The-Documentation-Compendium/pulls)
-[![License](https://img.shields.io/badge/license-MIT-blue.svg)](/LICENSE)
+[![License](https://img.shields.io/badge/license-MIT-blue.svg)](/LICENSE) -->
 
 </div>
 
 ---
 
-<p align="center"> Few lines describing your project.
+<p align="center"> Collect pointcloud data from CARLA and transform it to KITTI format.
     <br> 
 </p>
 
 ## 📝 Table of Contents
 
-- [About](#about)
-- [Getting Started](#getting_started)
-- [Deployment](#deployment)
-- [Usage](#usage)
-- [Built Using](#built_using)
-- [TODO](../TODO.md)
-- [Contributing](../CONTRIBUTING.md)
-- [Authors](#authors)
-- [Acknowledgments](#acknowledgement)
+- [📝 Table of Contents](#-table-of-contents)
+- [🧐 About ](#-about-)
+- [File Description](#file-description)
+  - [Details](#details)
+- [🏁 Getting Started ](#-getting-started-)
+  - [Prerequisites](#prerequisites)
+  - [Installing](#installing)
+- [🎈 Usage ](#-usage-)
+  - [收集原始数据](#收集原始数据)
+  - [数据集转换](#数据集转换)
 
 ## 🧐 About <a name = "about"></a>
 
@@ -54,7 +55,6 @@
 │                  ├─label_2
 │                  ├─status
 │                  └─velodyne
-├─dataset_utils/                              # 数据处理工具
 ├─label_tools/                                # 标签处理工具
 │  ├─kitti_object
 │  │  └─__pycache__
@@ -93,21 +93,18 @@
         - **label_2/**:   标签
         - **status/**:    状态文件(该文件为自定义文件, 用于记录每一帧的timestamp, LiDAR的位姿, 自车位姿)
         - **velodyne/**： 点云
-- **dataset_utils/**
-  - `carla_2_kitti.py`: 将raw_data转换为KITTI格式
-  - `kitti_2_carla.py`: 将KITTI格式转换为raw_data
 - **label_tools/**
   - **kitti_object/**: 转换为KITTI格式的工具代码
   - **yolov5/**: 转换为yolov5格式(暂时没用到)
-  - `kitti_objects_label.py`: 将carla格式转换为KITTI格式的主要代码文件
-  - `select_fragment2kitti.py`: 从raw_data中提取片段并转换为KITTI格式
+  - `kitti_objects_label.py`: 将carla格式转换为KITTI格式的主要代码文件(deprecated)
+  - `select_fragment2kitti.py`: **从raw_data中提取片段并转换为KITTI格式(用这个来转换数据集格式)**
   - `yolo_label.py`: 将carla格式转换为yolov5格式的主要代码文件(暂时没用到)
 - **raw_data/**
   - **record_xxxx_xxxx_xxxx/**: 每个子文件夹就是一段连续的录制数据
 - **recorder/** (该文件夹下主要构造了carla的对象和carla官方的API)
 - **test_code/** (开发时的测试代码)
 - **utils/** (开发中的工具函数, 基本无需更改)
-- 
+- `data_recorder.py`: **用于收集原始数据**
 
 
 
@@ -117,66 +114,62 @@ These instructions will get you a copy of the project up and running on your loc
 
 ### Prerequisites
 
-What things you need to install the software and how to install them.
+- 成功编译 Carla 0.9.13 windows版 
+- 足够的硬盘空间(存储数据)
 
-```
-Give examples
-```
+
 
 ### Installing
 
-A step by step series of examples that tell you how to get a development env running.
+- clone到本地
 
-Say what the step will be
-
-```
-Give the example
+```bash
+git clone https://github.com/eggman-1024/CarlaTool.git
 ```
 
-And repeat
-
-```
-until finished
-```
-
-End with an example of getting some data out of the system or using it for a little demo.
-
-## 🔧 Running the tests <a name = "tests"></a>
-
-Explain how to run the automated tests for this system.
-
-### Break down into end to end tests
-
-Explain what these tests test and why
-
-```
-Give an example
+- 创建并进入conda环境
+  
+```bash
+conda create -n carla_913 python=3.8
+conda activate carla_913
 ```
 
-### And coding style tests
+- 根据`requirements.txt`安装依赖包
 
-Explain what these tests test and why
+```bash
+pip install -r requirements.txt
+```
 
-```
-Give an example
-```
 
 ## 🎈 Usage <a name="usage"></a>
 
-Add notes about how to use the system.
+### 收集原始数据
+- 打开Carla
+- 根据需求配置config
+- 运行`data_recorder.py`
+```bash
+python data_recorder.py
+```
 
-## 🚀 Deployment <a name = "deployment"></a>
+### 数据集转换
+运行`label_tools/select_fragment2kitti.py`
+```bash
+python label_tools/select_fragment2kitti.py
+```
 
-Add additional notes about how to deploy this on a live system.
 
-## ⛏️ Built Using <a name = "built_using"></a>
+<!-- ## 🚀 Deployment <a name = "deployment"></a>
+
+Add additional notes about how to deploy this on a live system. -->
+
+<!-- ## ⛏️ Built Using <a name = "built_using"></a>
 
 - [MongoDB](https://www.mongodb.com/) - Database
 - [Express](https://expressjs.com/) - Server Framework
 - [VueJs](https://vuejs.org/) - Web Framework
-- [NodeJs](https://nodejs.org/en/) - Server Environment
+- [NodeJs](https://nodejs.org/en/) - Server Environment -->
 
-## ✍️ Authors <a name = "authors"></a>
+<!-- ## ✍️ Authors <a name = "authors"></a>
 
 - [@kylelobo](https://github.com/kylelobo) - Idea & Initial work
 
@@ -186,4 +179,4 @@ See also the list of [contributors](https://github.com/kylelobo/The-Documentatio
 
 - Hat tip to anyone whose code was used
 - Inspiration
-- References
+- References -->

@@ -36,8 +36,9 @@ def select_fragments(clip_length):
     # 循环获取用户命令行输入
     while True:
         print("=================================================================================")
+        print(f"当前设置片段长度为:{clip_length}")
         print(f"当前已存储的id:{multi_start_idx_list}")
-        print("请输入需要选择的数据片段的起始id:\n[输入q退出/输入s保存/d删除最后一个片段]")
+        print("请输入需要选择的数据片段的起始id:\n[输入q退出/输入s保存/d删除最后一个片段/'回车'保存当前地图序列]")
         idx_list = []
         input_str = input()
         if input_str == "q":
