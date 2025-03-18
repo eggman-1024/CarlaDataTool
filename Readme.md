@@ -20,11 +20,11 @@
     <br> 
 </p>
 
-## 📝 Table of Contents
+## Table of Contents
 
-- [📝 Table of Contents](#-table-of-contents)
+- [Table of Contents](#table-of-contents)
 - [🧐 About ](#-about-)
-- [File Description](#file-description)
+- [📝 File Description](#-file-description)
   - [Details](#details)
 - [🏁 Getting Started ](#-getting-started-)
   - [Prerequisites](#prerequisites)
@@ -39,7 +39,7 @@
 - 从[CARLA Simulator](https://carla.org/)(windows 0.9.13版本)收集仿真数据集，包括LiDAR点云及Camera图片。
 - 将采集的raw_data转换为KITTI格式。
 
-##  File Description
+## 📝 File Description
 ```
 ├─config/                                     # 配置文件
 │  ├─actor_settings_with_map                  
